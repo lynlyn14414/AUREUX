@@ -5,14 +5,34 @@ import { useApp, ChatMessage } from '../context/AppContext';
 import { Link } from 'react-router-dom';
 
 export function Chat() {
-  const { user, users, following, isFriend, getFollowers, conversations, sendMessage, getConversation, markMessagesAsRead, getUnreadCount } = useApp();
+  const { user, users, following, isFriend, conversations, sendMessage, getConversation, markMessagesAsRead, getUnreadCount } = useApp();
   const [selectedFriend, setSelectedFriend] = useState<string | null>(null);
   const [messageInput, setMessageInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [myFollowers, setMyFollowers] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Fetch my followers from server
+  useEffect(() => {
+    const fetchFollowers = async () => {
+      if (user?.id) {
+        try {
+          const res = await fetch(`/api/followers/${user.id}`);
+          if (res.ok) {
+            const data = await res.json();
+            setMyFollowers(data);
+          }
+        } catch (e) {
+          console.error('Failed to fetch followers:', e);
+        }
+      }
+    };
+    fetchFollowers();
+    const interval = setInterval(fetchFollowers, 5000);
+    return () => clearInterval(interval);
+  }, [user?.id]);
+
   // Only show mutual friends (people who follow you back)
-  const myFollowers = getFollowers(user?.id || '');
   const mutualFriends = following.filter(id => myFollowers.includes(id));
   const friendUsers = mutualFriends.map(friendId => users.find(u => u.id === friendId)).filter(Boolean);
   

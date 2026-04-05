@@ -16,13 +16,14 @@ export function Social() {
   const [searchParams] = useSearchParams();
   const initialTab = searchParams.get('filter') === 'myposts' ? 'myposts' : 'feed';
   const [activeTab, setActiveTab] = useState(initialTab);
-  const { posts, addPost, likePost, unlikePost, addComment, user, following, users, library, stories, drafts, followUser, unfollowUser, isFollowing, isFriend } = useApp();
+  const { posts, addPost, likePost, unlikePost, addComment, user, following, users, library, stories, drafts, followUser, unfollowUser, isFollowing, isFriend, markPostAsRead, getUnreadPostCount } = useApp();
   const navigate = useNavigate();
   const [newPostContent, setNewPostContent] = useState("");
   const [expandedComments, setExpandedComments] = useState<number | null>(null);
   const [commentInputs, setCommentInputs] = useState<{ [key: number]: string }>({});
   const [openMenu, setOpenMenu] = useState<number | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const unreadCount = getUnreadPostCount();
 
   useEffect(() => {
     if (searchParams.get('filter') === 'myposts') {
@@ -129,6 +130,15 @@ export function Social() {
     return isFromFriend || isAboutFollowedStory;
   });
 
+  // Mark posts as read when viewing the following tab
+  useEffect(() => {
+    if (activeTab === 'following') {
+      followingPosts.forEach(post => {
+        markPostAsRead(post.id);
+      });
+    }
+  }, [activeTab, followingPosts]);
+
   const myPosts = user ? posts.filter(post => post.user === user.username) : [];
 
   const storyUpdates = drafts
@@ -160,17 +170,19 @@ export function Social() {
               >
                 Global Feed
               </button>
-              <button 
-                onClick={() => setActiveTab('following')}
-                className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-colors flex items-center justify-between ${activeTab === 'following' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:bg-slate-700 hover:text-white'}`}
-              >
-                <span>Following</span>
-                {followingPosts.length > 0 && (
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${activeTab === 'following' ? 'bg-white/20' : 'bg-purple-600'}`}>
-                    {followingPosts.length}
-                  </span>
-                )}
-              </button>
+              {user && (
+                <button 
+                  onClick={() => setActiveTab('following')}
+                  className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-colors flex items-center justify-between ${activeTab === 'following' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:bg-slate-700 hover:text-white'}`}
+                >
+                  <span>Following</span>
+                  {unreadCount > 0 && (
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${activeTab === 'following' ? 'bg-white/20' : 'bg-purple-600'}`}>
+                      {unreadCount}
+                    </span>
+                  )}
+                </button>
+              )}
               <button 
                 onClick={() => setActiveTab('updates')}
                 className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-colors flex items-center justify-between ${activeTab === 'updates' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:bg-slate-700 hover:text-white'}`}
@@ -232,12 +244,14 @@ export function Social() {
             >
               Global
             </button>
-            <button 
-              onClick={() => setActiveTab('following')}
-              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap ${activeTab === 'following' ? 'bg-purple-600 text-white' : 'bg-slate-800 text-slate-400'}`}
-            >
-              Following {followingPosts.length > 0 && `(${followingPosts.length})`}
-            </button>
+            {user && (
+              <button 
+                onClick={() => setActiveTab('following')}
+                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap ${activeTab === 'following' ? 'bg-purple-600 text-white' : 'bg-slate-800 text-slate-400'}`}
+              >
+                Following {unreadCount > 0 && `(${unreadCount})`}
+              </button>
+            )}
             <button 
               onClick={() => setActiveTab('updates')}
               className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap ${activeTab === 'updates' ? 'bg-purple-600 text-white' : 'bg-slate-800 text-slate-400'}`}

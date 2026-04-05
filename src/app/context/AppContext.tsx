@@ -130,6 +130,7 @@ interface AppContextType {
   user: User | null;
   users: User[];
   following: string[];
+  followers: string[];
   posts: Post[];
   library: string[];
   stories: Story[];
@@ -172,6 +173,9 @@ interface AppContextType {
   getUserStoryRating: (storyId: string) => number | null;
   markNotificationsRead: () => void;
   getUnreadNotifCount: () => number;
+  readPosts: string[];
+  markPostAsRead: (postId: number) => void;
+  getUnreadPostCount: () => number;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -220,6 +224,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(() => safeGetStorage('aureux_user', null));
   const [users, setUsers] = useState<User[]>(() => safeGetStorage('aureux_users', COMMUNITY_USERS));
   const [following, setFollowing] = useState<string[]>(() => safeGetStorage('aureux_following', []));
+  const [followers, setFollowers] = useState<string[]>([]);
   const [posts, setPosts] = useState(() => safeGetStorage('aureux_posts', INITIAL_POSTS));
   const [library, setLibrary] = useState<string[]>(() => safeGetStorage('aureux_library', []));
   const [stories, setStories] = useState<Story[]>(INITIAL_STORIES);
@@ -227,6 +232,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [conversations, setConversations] = useState<Conversation[]>(() => safeGetStorage('aureux_conversations', []));
   const [storyRatings, setStoryRatings] = useState<StoryRating[]>(() => safeGetStorage('aureux_ratings', []));
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [readPosts, setReadPosts] = useState<string[]>(() => safeGetStorage('aureux_readPosts', []));
   const syncTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const syncFromServer = useCallback(async () => {
@@ -248,6 +254,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (user) {
       const serverFollowing = await apiFetch(`/following/${user.id}`);
       if (serverFollowing) setFollowing(serverFollowing);
+
+      const serverFollowers = await apiFetch(`/followers/${user.id}`);
+      if (serverFollowers) setFollowers(serverFollowers);
 
       const serverNotifs = await apiFetch(`/notifications/${user.id}`);
       if (serverNotifs) setNotifications(serverNotifs);
@@ -275,6 +284,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { safeSetStorage('aureux_posts', posts); }, [posts]);
   useEffect(() => { safeSetStorage('aureux_library', library); }, [library]);
   useEffect(() => { safeSetStorage('aureux_ratings', storyRatings); }, [storyRatings]);
+  useEffect(() => { safeSetStorage('aureux_readPosts', readPosts); }, [readPosts]);
 
   useEffect(() => {
     try {
@@ -450,8 +460,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const isFriend = (userId: string): boolean => {
-    // Mutual follow = friends
-    return following.includes(userId) && getFollowers(user.id || '').includes(userId);
+    // Mutual follow = friends (you follow them AND they follow you back)
+    return following.includes(userId) && followers.includes(userId);
   };
 
   const getFollowers = (userId: string): string[] => {
@@ -745,16 +755,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return notifications.filter(n => !n.read).length;
   };
 
+  const markPostAsRead = (postId: number) => {
+    const postIdStr = postId.toString();
+    if (!readPosts.includes(postIdStr)) {
+      setReadPosts(prev => [...prev, postIdStr]);
+    }
+  };
+
+  const getUnreadPostCount = (): number => {
+    if (!user) return 0;
+    // Count posts from people you follow that you haven't read
+    return posts.filter(post => {
+      const postUserId = users.find(u => u.username === post.user)?.id;
+      const isFromFollowing = postUserId && following.includes(postUserId);
+      const isUnread = !readPosts.includes(post.id.toString());
+      return isFromFollowing && isUnread;
+    }).length;
+  };
+
   return (
     <AppContext.Provider value={{
-      user, users, following, posts, library, stories, drafts, conversations, notifications,
+      user, users, following, followers, posts, library, stories, drafts, conversations, notifications,
       login, register, adminLogin, registerAdmin, logout, updateProfile,
       followUser, unfollowUser, isFollowing, isFriend, getFollowers, getFriends, addPost, likePost, unlikePost, addComment,
       addToLibrary, removeFromLibrary, isInLibrary, updateStory,
       saveDraft, deleteDraft, addChapter, updateChapter, deleteChapter, reorderChapters,
       sendMessage, getConversation, markMessagesAsRead, getUnreadCount,
       clearAllData, rateStory, getStoryRating, getUserStoryRating,
-      markNotificationsRead, getUnreadNotifCount
+      markNotificationsRead, getUnreadNotifCount, readPosts, markPostAsRead, getUnreadPostCount
     }}>
       {children}
     </AppContext.Provider>
@@ -765,7 +793,7 @@ export function useApp() {
   const context = useContext(AppContext);
   if (context === undefined) {
     return {
-      user: null, users: COMMUNITY_USERS, following: [], posts: INITIAL_POSTS,
+      user: null, users: COMMUNITY_USERS, following: [], followers: [], posts: INITIAL_POSTS,
       library: [], stories: INITIAL_STORIES,
       login: async () => false, register: async () => false,
       adminLogin: async () => false, registerAdmin: async () => false,
@@ -780,7 +808,8 @@ export function useApp() {
       markMessagesAsRead: () => {}, getUnreadCount: () => 0,
       clearAllData: () => {},
       rateStory: () => {}, getStoryRating: () => 0, getUserStoryRating: () => null,
-      notifications: [], markNotificationsRead: () => {}, getUnreadNotifCount: () => 0
+      notifications: [], markNotificationsRead: () => {}, getUnreadNotifCount: () => 0,
+      readPosts: [], markPostAsRead: () => {}, getUnreadPostCount: () => 0
     };
   }
   return context;

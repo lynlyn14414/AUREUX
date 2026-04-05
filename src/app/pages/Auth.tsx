@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { BookOpen, User, Lock, Eye, EyeOff, ShieldCheck, Key } from 'lucide-react';
+import { BookOpen, User, Lock, Eye, EyeOff, ShieldCheck, Key, Mail } from 'lucide-react';
+import { GoogleLogin } from '@react-oauth/google';
+import { jwtDecode } from 'jwt-decode';
 import { useApp } from '../context/AppContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -11,6 +13,7 @@ export function Auth() {
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     username: '',
+    email: '',
     password: '',
     confirmPassword: '',
     adminCode: ''
@@ -19,11 +22,48 @@ export function Auth() {
   const { login, register, adminLogin, registerAdmin } = useApp();
   const navigate = useNavigate();
 
+  const handleGoogleLogin = async (email: string, name: string, googleId: string) => {
+    // Create username from email (before @)
+    const username = email.split('@')[0];
+    
+    // Try to login first
+    const loginSuccess = await login({ username, password: googleId });
+    
+    if (loginSuccess) {
+      toast.success('Welcome back!');
+      navigate('/');
+    } else {
+      // User doesn't exist, register them
+      const registerSuccess = await register({ 
+        username, 
+        email,
+        password: googleId 
+      });
+      
+      if (registerSuccess) {
+        toast.success('Account created with Google!');
+        navigate('/');
+      } else {
+        toast.error('Failed to create account');
+      }
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.username.trim()) {
       toast.error('Please enter a username');
+      return;
+    }
+
+    if (!isLogin && !formData.email.trim()) {
+      toast.error('Please enter an email');
+      return;
+    }
+
+    if (!isLogin && !formData.email.includes('@')) {
+      toast.error('Please enter a valid email');
       return;
     }
 
@@ -44,6 +84,7 @@ export function Auth() {
 
     const userData = { 
       username: formData.username.trim(), 
+      email: formData.email.trim(),
       password: formData.password 
     };
 
@@ -106,7 +147,7 @@ export function Auth() {
             {isAdminMode ? <ShieldCheck size={32} className="text-white" /> : <BookOpen size={32} className="text-white" />}
           </div>
           <h1 className="text-3xl font-bold text-white mb-2">
-            {isAdminMode ? 'Admin Portal' : 'Welcome to Aureux'}
+            {isAdminMode ? 'Admin Portal' : 'Welcome to HECATE'}
           </h1>
           <p className="text-slate-400">
             {isLogin ? 'Sign in to continue' : 'Create your account'}
@@ -153,6 +194,24 @@ export function Auth() {
                 />
               </div>
             </div>
+
+            {!isLogin && (
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Email
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={20} />
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-10 pr-4 py-3 text-white placeholder-slate-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                    placeholder="Enter your email"
+                  />
+                </div>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">
@@ -223,6 +282,39 @@ export function Auth() {
             >
               {isLogin ? 'Sign In' : 'Create Account'}
             </button>
+
+            {!isAdminMode && (
+              <>
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-slate-700"></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-2 bg-slate-800 text-slate-400">Or continue with</span>
+                  </div>
+                </div>
+
+                <div className="flex justify-center">
+                  <GoogleLogin
+                    onSuccess={(credentialResponse) => {
+                      if (credentialResponse.credential) {
+                        const decoded: any = jwtDecode(credentialResponse.credential);
+                        const email = decoded.email;
+                        const name = decoded.name;
+                        const googleId = decoded.sub;
+                        
+                        // Create or login user with Google data
+                        handleGoogleLogin(email, name, googleId);
+                      }
+                    }}
+                    onError={() => {
+                      toast.error('Google Sign In failed');
+                    }}
+                    useOneTap
+                  />
+                </div>
+              </>
+            )}
           </form>
 
           <div className="mt-6 pt-6 border-t border-slate-700">

@@ -40,9 +40,10 @@ export function Navbar() {
     <nav className="bg-slate-900/95 backdrop-blur-md text-slate-100 border-b border-slate-800 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          <Link to="/" className="flex items-center space-x-2">
+          <Link to="/" className="flex items-center space-x-3">
+            <img src="/logo.jpg" alt="HECATE" className="w-10 h-10 rounded-full object-cover" />
             <span className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent">
-              Aureux
+              HECATE
             </span>
           </Link>
 

@@ -7,9 +7,12 @@ export function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row justify-between items-center">
           <div className="mb-4 md:mb-0">
-            <span className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent">
-              Aureux
-            </span>
+            <div className="flex items-center gap-3">
+              <img src="/logo.jpg" alt="HECATE" className="w-10 h-10 rounded-full object-cover" />
+              <span className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent">
+                HECATE
+              </span>
+            </div>
             <p className="mt-2 text-sm">Read your favorite stories anytime, anywhere.</p>
           </div>
           

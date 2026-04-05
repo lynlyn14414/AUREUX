@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Camera, Edit2, UserPlus, UserMinus, Settings, X, Check, Upload, Link as LinkIcon, BookOpen, MessageSquare, Heart, MessageCircle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -8,6 +8,38 @@ import { toast } from 'sonner';
 export function Profile() {
   const { user, updateProfile, following, users, followUser, unfollowUser, isFollowing, isFriend, getFollowers, getFriends, drafts, posts } = useApp();
   const navigate = useNavigate();
+  const [myFollowers, setMyFollowers] = useState<string[]>([]);
+  const [serverFollowing, setServerFollowing] = useState<string[]>([]);
+  
+  // Fetch following and followers from server
+  useEffect(() => {
+    const fetchData = async () => {
+      if (user?.id) {
+        try {
+          const [followingRes, followersRes] = await Promise.all([
+            fetch(`/api/following/${user.id}`),
+            fetch(`/api/followers/${user.id}`)
+          ]);
+          if (followingRes.ok) {
+            const data = await followingRes.json();
+            setServerFollowing(data);
+          }
+          if (followersRes.ok) {
+            const data = await followersRes.json();
+            setMyFollowers(data);
+          }
+        } catch (e) {
+          console.error('Failed to fetch data:', e);
+        }
+      }
+    };
+    fetchData();
+    const interval = setInterval(fetchData, 5000);
+    return () => clearInterval(interval);
+  }, [user?.id]);
+  
+  // Use server following if available, otherwise fallback to context
+  const effectiveFollowing = serverFollowing.length > 0 ? serverFollowing : following;
   
   const [isEditingStatus, setIsEditingStatus] = useState(false);
   const [statusInput, setStatusInput] = useState(user?.status || '');
@@ -115,8 +147,7 @@ export function Profile() {
     if (bannerInputRef.current) bannerInputRef.current.value = '';
   };
 
-  const myFriends = getFriends(user?.id || '');
-  const myFollowers = getFollowers(user?.id || '');
+  const myFriends = effectiveFollowing.filter(id => myFollowers.includes(id));
 
   const otherUsers = users.filter(u => u.id !== user.id);
 
@@ -252,7 +283,7 @@ export function Profile() {
                   to="/social"
                   className="bg-slate-900/50 rounded-lg p-4 hover:bg-slate-800 transition-colors cursor-pointer"
                 >
-                  <p className="text-2xl font-bold text-purple-400">{following.length}</p>
+                  <p className="text-2xl font-bold text-purple-400">{effectiveFollowing.length}</p>
                   <p className="text-slate-400 text-sm">Following</p>
                 </Link>
                 <Link 

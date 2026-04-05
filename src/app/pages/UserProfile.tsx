@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { UserPlus, UserMinus, MessageCircle, BookOpen, ArrowLeft, Users, UserCheck, Settings, MessageSquare } from 'lucide-react';
@@ -8,9 +8,31 @@ import { toast } from 'sonner';
 export function UserProfile() {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
-  const { user, users, following, followUser, unfollowUser, isFollowing, isFriend, getFollowers, drafts, posts } = useApp();
+  const { user, users, following, followUser, unfollowUser, isFollowing, isFriend, drafts, posts } = useApp();
+  const [theirFollowers, setTheirFollowers] = useState<string[]>([]);
 
   const profileUser = users.find(u => u.id === userId || u.username === userId);
+
+  // Fetch followers for this user
+  useEffect(() => {
+    const fetchFollowers = async () => {
+      if (profileUser?.id) {
+        try {
+          const res = await fetch(`/api/followers/${profileUser.id}`);
+          if (res.ok) {
+            const data = await res.json();
+            setTheirFollowers(data);
+          }
+        } catch (e) {
+          console.error('Failed to fetch followers:', e);
+        }
+      }
+    };
+    fetchFollowers();
+    // Refresh every 5 seconds
+    const interval = setInterval(fetchFollowers, 5000);
+    return () => clearInterval(interval);
+  }, [profileUser?.id]);
 
   if (!profileUser) {
     return (
@@ -33,13 +55,12 @@ export function UserProfile() {
   const isOwnProfile = user?.id === profileUser.id;
   const amFollowing = isFollowing(profileUser.id);
   const weAreFriends = isFriend(profileUser.id);
-  const theirFollowers = getFollowers(profileUser.id);
+
+  const userPosts = posts.filter(p => p.userId === profileUser.id || p.user === profileUser.username);
 
   const userStories = drafts.filter(d => 
     d.published && (d.authorId === profileUser.id)
   );
-
-  const userPosts = posts.filter(p => p.userId === profileUser.id || p.user === profileUser.username);
 
   const handleFollow = () => {
     if (!user) {
