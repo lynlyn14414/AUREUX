@@ -8,7 +8,7 @@ export function Footer() {
         <div className="flex flex-col md:flex-row justify-between items-center">
           <div className="mb-4 md:mb-0">
             <div className="flex items-center gap-3">
-              <img src="/logo.jpg" alt="HECATE" className="w-10 h-10 rounded-full object-cover" />
+              <img src="/logo.jpg" alt="HECATE" className="w-10 h-10 rounded-full object-cover scale-[1.4]" />
               <span className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent">
                 HECATE
               </span>

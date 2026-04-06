@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 const app = express();
-const PORT = 5173;
+const PORT = process.env.PORT || 5173;
 const DATA_FILE = path.join(__dirname, 'shared-data.json');
 
 app.use(cors());
@@ -82,9 +82,10 @@ app.post('/api/users/register', (req, res) => {
 app.post('/api/users/login', (req, res) => {
   const { username, password, isAdmin } = req.body;
   const data = readData();
+  // Check for normal password match OR googleId match (for Google login)
   const user = data.users.find(u =>
     u.username.toLowerCase() === username.toLowerCase() &&
-    u.password === password &&
+    (u.password === password || u.googleId === password) &&
     u.isAdmin === !!isAdmin
   );
   if (!user) return res.status(401).json({ error: 'Invalid credentials' });
@@ -205,6 +206,35 @@ app.get('/api/followers/:userId', (req, res) => {
   res.json(followers);
 });
 
+// Notifications endpoints
+app.post('/api/notifications', (req, res) => {
+  const data = readData();
+  if (!data.notifications) data.notifications = [];
+  data.notifications.push(req.body);
+  writeData(data);
+  res.json({ ok: true });
+});
+
+app.get('/api/notifications/:userId', (req, res) => {
+  const data = readData();
+  const userNotifications = (data.notifications || []).filter(n => n.toUserId === req.params.userId);
+  res.json(userNotifications);
+});
+
+app.post('/api/notifications/:userId/read', (req, res) => {
+  const data = readData();
+  if (data.notifications) {
+    data.notifications = data.notifications.map(n => {
+      if (n.toUserId === req.params.userId) {
+        return { ...n, read: true };
+      }
+      return n;
+    });
+    writeData(data);
+  }
+  res.json({ ok: true });
+});
+
 app.post('/api/clear', (req, res) => {
   writeData({ ...defaultData });
   res.json({ ok: true });
@@ -216,6 +246,6 @@ app.get('/{*splat}', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`HECATE API server running on http://localhost:${PORT}`);
+app.listen(PORT, () => {
+  console.log(`HECATE API server running on port ${PORT}`);
 });

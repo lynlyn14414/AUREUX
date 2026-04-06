@@ -1,26 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Mail, CreditCard, Link as LinkIcon, Shield, ChevronRight, Check, X } from 'lucide-react';
+import { Mail, Link as LinkIcon, Shield, Globe } from 'lucide-react';
+import { GoogleLogin } from '@react-oauth/google';
+import { jwtDecode } from 'jwt-decode';
 import { useApp } from '../context/AppContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 export function Settings() {
-  const { user, updateProfile } = useApp();
+  const { user, updateProfile, language, setLanguage, t } = useApp();
   const navigate = useNavigate();
   
   const [email, setEmail] = useState(user?.email || '');
   const [isEditingEmail, setIsEditingEmail] = useState(false);
-  const [linkedAccounts, setLinkedAccounts] = useState({
-    google: false,
-    discord: false,
-    facebook: false
-  });
-  const [paymentMethods, setPaymentMethods] = useState({
-    creditcard: false,
-    paypal: false,
-    bizum: false
-  });
+  const [linkedGoogle, setLinkedGoogle] = useState(false);
+
+  // Check if user has Google linked (based on email domain or stored flag)
+  useEffect(() => {
+    if (user?.email) {
+      // Check if account was created with Google (you could also store a flag in user data)
+      const isGoogleAccount = localStorage.getItem('aureux_googleLinked') === 'true';
+      setLinkedGoogle(isGoogleAccount);
+    }
+  }, [user]);
 
   if (!user) {
     navigate('/auth');
@@ -37,14 +39,30 @@ export function Settings() {
     toast.success('Email updated!');
   };
 
-  const toggleLinkedAccount = (provider: keyof typeof linkedAccounts) => {
-    setLinkedAccounts(prev => ({ ...prev, [provider]: !prev[provider] }));
-    toast.success(`${provider.charAt(0).toUpperCase() + provider.slice(1)} ${linkedAccounts[provider] ? 'unlinked' : 'linked'}!`);
+  const handleGoogleLink = (credentialResponse: any) => {
+    if (credentialResponse.credential) {
+      const decoded: any = jwtDecode(credentialResponse.credential);
+      const googleEmail = decoded.email;
+      const googleId = decoded.sub;
+      
+      // Update user email and googleId (keep original password for normal login)
+      updateProfile({ 
+        email: googleEmail, 
+        googleId: googleId 
+        // Note: We don't change the password, so original password still works
+      });
+      setEmail(googleEmail);
+      localStorage.setItem('aureux_googleLinked', 'true');
+      setLinkedGoogle(true);
+      toast.success('Google account linked successfully!');
+    }
   };
 
-  const togglePaymentMethod = (method: keyof typeof paymentMethods) => {
-    setPaymentMethods(prev => ({ ...prev, [method]: !prev[method] }));
-    toast.success(`${method === 'creditcard' ? 'Credit Card' : method.charAt(0).toUpperCase() + method.slice(1)} ${paymentMethods[method] ? 'removed' : 'added'}!`);
+  const handleUnlinkGoogle = () => {
+    updateProfile({ googleId: undefined });
+    localStorage.removeItem('aureux_googleLinked');
+    setLinkedGoogle(false);
+    toast.success('Google account unlinked');
   };
 
   return (
@@ -68,7 +86,7 @@ export function Settings() {
             <section>
               <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                 <Mail size={20} className="text-blue-400" />
-                Email Address
+                {t('changeEmail')}
               </h2>
               <div className="bg-slate-700/50 rounded-xl p-4">
                 {isEditingEmail ? (
@@ -96,17 +114,50 @@ export function Settings() {
                 ) : (
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-slate-400 text-sm">Current email</p>
+                      <p className="text-slate-400 text-sm">{t('currentEmail')}</p>
                       <p className="text-white font-medium">{user?.email || 'No email set'}</p>
                     </div>
                     <button 
                       onClick={() => setIsEditingEmail(true)}
                       className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-white text-sm font-medium"
                     >
-                      Change
+                      {t('edit')}
                     </button>
                   </div>
                 )}
+              </div>
+            </section>
+
+            {/* Language Section */}
+            <section>
+              <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <Globe size={20} className="text-blue-400" />
+                {t('language')}
+              </h2>
+              <div className="bg-slate-700/50 rounded-xl p-4">
+                <p className="text-slate-400 text-sm mb-3">{t('selectLanguage')}</p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setLanguage('en')}
+                    className={`flex-1 py-3 px-4 rounded-lg font-medium transition-colors ${
+                      language === 'en'
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                    }`}
+                  >
+                    🇺🇸 {t('english')}
+                  </button>
+                  <button
+                    onClick={() => setLanguage('es')}
+                    className={`flex-1 py-3 px-4 rounded-lg font-medium transition-colors ${
+                      language === 'es'
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                    }`}
+                  >
+                    🇪🇸 {t('spanish')}
+                  </button>
+                </div>
               </div>
             </section>
 
@@ -114,83 +165,39 @@ export function Settings() {
             <section>
               <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                 <LinkIcon size={20} className="text-green-400" />
-                Linked Accounts
+                {t('linkedAccounts')}
               </h2>
-              <div className="space-y-3">
-                {[
-                  { key: 'google', name: 'Google', color: 'bg-red-500' },
-                  { key: 'discord', name: 'Discord', color: 'bg-indigo-500' },
-                  { key: 'facebook', name: 'Facebook', color: 'bg-blue-600' }
-                ].map((account) => (
-                  <div 
-                    key={account.key}
-                    className="flex items-center justify-between bg-slate-700/50 rounded-xl p-4"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 ${account.color} rounded-lg flex items-center justify-center text-white font-bold`}>
-                        {account.name[0]}
-                      </div>
-                      <div>
-                        <p className="text-white font-medium">{account.name}</p>
-                        <p className="text-slate-400 text-sm">
-                          {linkedAccounts[account.key as keyof typeof linkedAccounts] ? 'Connected' : 'Not connected'}
-                        </p>
-                      </div>
+              <div className="bg-slate-700/50 rounded-xl p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-red-500 rounded-lg flex items-center justify-center text-white font-bold">
+                      G
                     </div>
-                    <button
-                      onClick={() => toggleLinkedAccount(account.key as keyof typeof linkedAccounts)}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        linkedAccounts[account.key as keyof typeof linkedAccounts]
-                          ? 'bg-red-600/20 text-red-400 hover:bg-red-600/30'
-                          : 'bg-purple-600 hover:bg-purple-700 text-white'
-                      }`}
-                    >
-                      {linkedAccounts[account.key as keyof typeof linkedAccounts] ? 'Unlink' : 'Link'}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            {/* Payment Methods Section */}
-            <section>
-              <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <CreditCard size={20} className="text-yellow-400" />
-                Payment Methods
-              </h2>
-              <div className="space-y-3">
-                {[
-                  { key: 'creditcard', name: 'Credit Card', icon: '💳' },
-                  { key: 'paypal', name: 'PayPal', icon: '🅿️' },
-                  { key: 'bizum', name: 'Bizum', icon: '💶' }
-                ].map((method) => (
-                  <div 
-                    key={method.key}
-                    className="flex items-center justify-between bg-slate-700/50 rounded-xl p-4"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-slate-600 rounded-lg flex items-center justify-center text-xl">
-                        {method.icon}
-                      </div>
-                      <div>
-                        <p className="text-white font-medium">{method.name}</p>
-                        <p className="text-slate-400 text-sm">
-                          {paymentMethods[method.key as keyof typeof paymentMethods] ? 'Added' : 'Not added'}
-                        </p>
-                      </div>
+                    <div>
+                      <p className="text-white font-medium">Google</p>
+                      <p className="text-slate-400 text-sm">
+                        {linkedGoogle ? t('connected') : t('notConnected')}
+                      </p>
                     </div>
-                    <button
-                      onClick={() => togglePaymentMethod(method.key as keyof typeof paymentMethods)}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        paymentMethods[method.key as keyof typeof paymentMethods]
-                          ? 'bg-red-600/20 text-red-400 hover:bg-red-600/30'
-                          : 'bg-purple-600 hover:bg-purple-700 text-white'
-                      }`}
-                    >
-                      {paymentMethods[method.key as keyof typeof paymentMethods] ? 'Remove' : 'Add'}
-                    </button>
                   </div>
-                ))}
+                  {linkedGoogle ? (
+                    <button
+                      onClick={handleUnlinkGoogle}
+                      className="px-4 py-2 rounded-lg text-sm font-medium bg-red-600/20 text-red-400 hover:bg-red-600/30 transition-colors"
+                    >
+                      {t('unlink')}
+                    </button>
+                  ) : (
+                    <div className="scale-90 origin-right">
+                      <GoogleLogin
+                        onSuccess={handleGoogleLink}
+                        onError={() => toast.error('Google linking failed')}
+                        text="link"
+                        size="medium"
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             </section>
           </div>

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { translations, Language, TranslationKey } from '../translations';
 
 const API = '/api';
 
@@ -137,6 +138,10 @@ interface AppContextType {
   drafts: Draft[];
   conversations: Conversation[];
   notifications: Notification[];
+  readPosts: string[];
+  language: Language;
+  setLanguage: (lang: Language) => void;
+  t: (key: TranslationKey) => string;
   login: (userData?: UserData) => Promise<boolean>;
   register: (userData?: UserData) => Promise<boolean>;
   adminLogin: (userData?: UserData) => Promise<boolean>;
@@ -233,7 +238,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [storyRatings, setStoryRatings] = useState<StoryRating[]>(() => safeGetStorage('aureux_ratings', []));
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [readPosts, setReadPosts] = useState<string[]>(() => safeGetStorage('aureux_readPosts', []));
+  const [language, setLanguageState] = useState<Language>(() => safeGetStorage('aureux_language', 'en'));
   const syncTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Translation function
+  const t = (key: TranslationKey): string => {
+    return translations[language][key] || key;
+  };
+
+  // Set language with persistence
+  const setLanguage = (lang: Language) => {
+    setLanguageState(lang);
+    safeSetStorage('aureux_language', lang);
+  };
 
   const syncFromServer = useCallback(async () => {
     const serverUsers = await apiFetch('/users');
@@ -285,6 +302,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { safeSetStorage('aureux_library', library); }, [library]);
   useEffect(() => { safeSetStorage('aureux_ratings', storyRatings); }, [storyRatings]);
   useEffect(() => { safeSetStorage('aureux_readPosts', readPosts); }, [readPosts]);
+  useEffect(() => { safeSetStorage('aureux_language', language); }, [language]);
 
   useEffect(() => {
     try {
@@ -315,9 +333,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (userData?: UserData): Promise<boolean> => {
     if (!userData?.username || !userData?.password) return false;
+    const isAdminLogin = userData.isAdmin || false;
     const result = await apiFetch('/users/login', {
       method: 'POST',
-      body: JSON.stringify({ username: userData.username, password: userData.password, isAdmin: false }),
+      body: JSON.stringify({ username: userData.username, password: userData.password, isAdmin: isAdminLogin }),
     });
     if (result && !result.error) {
       setUser(result);
@@ -326,7 +345,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const existingUser = users.find(u =>
       u.username.toLowerCase() === userData.username.toLowerCase() &&
       u.password === userData.password &&
-      !u.isAdmin
+      u.isAdmin === isAdminLogin
     );
     if (existingUser) {
       setUser(existingUser);
@@ -364,6 +383,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const adminLogin = async (userData?: UserData): Promise<boolean> => {
     if (!userData?.username || !userData?.password) return false;
+    
+    // First try server login
     const result = await apiFetch('/users/login', {
       method: 'POST',
       body: JSON.stringify({ username: userData.username, password: userData.password, isAdmin: true }),
@@ -372,11 +393,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setUser(result);
       return true;
     }
-    const existingAdmin = users.find(u =>
-      u.username.toLowerCase() === userData.username.toLowerCase() &&
-      u.password === userData.password &&
-      u.isAdmin
-    );
+    
+    // If server fails, fetch fresh users data and check locally
+    const freshUsers = await apiFetch('/users');
+    console.log('Fresh users data:', freshUsers);
+    console.log('Looking for username:', userData.username!.toLowerCase());
+    console.log('With password:', userData.password);
+    
+    const existingAdmin = freshUsers?.find((u: any) => {
+      const usernameMatch = u.username.toLowerCase() === userData.username!.toLowerCase();
+      const passwordMatch = u.password === userData.password;
+      const googleIdMatch = u.googleId === userData.password;
+      const isAdmin = u.isAdmin;
+      console.log('Checking user:', u.username, { usernameMatch, passwordMatch, googleIdMatch, isAdmin, storedPassword: u.password, storedGoogleId: u.googleId });
+      return usernameMatch && (passwordMatch || googleIdMatch) && isAdmin;
+    });
+    
+    console.log('Found admin:', existingAdmin);
+    
     if (existingAdmin) {
       setUser(existingAdmin);
       return true;
@@ -776,13 +810,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   return (
     <AppContext.Provider value={{
       user, users, following, followers, posts, library, stories, drafts, conversations, notifications,
+      readPosts, language, setLanguage, t,
       login, register, adminLogin, registerAdmin, logout, updateProfile,
       followUser, unfollowUser, isFollowing, isFriend, getFollowers, getFriends, addPost, likePost, unlikePost, addComment,
       addToLibrary, removeFromLibrary, isInLibrary, updateStory,
       saveDraft, deleteDraft, addChapter, updateChapter, deleteChapter, reorderChapters,
       sendMessage, getConversation, markMessagesAsRead, getUnreadCount,
       clearAllData, rateStory, getStoryRating, getUserStoryRating,
-      markNotificationsRead, getUnreadNotifCount, readPosts, markPostAsRead, getUnreadPostCount
+      markNotificationsRead, getUnreadNotifCount, markPostAsRead, getUnreadPostCount
     }}>
       {children}
     </AppContext.Provider>
@@ -809,7 +844,8 @@ export function useApp() {
       clearAllData: () => {},
       rateStory: () => {}, getStoryRating: () => 0, getUserStoryRating: () => null,
       notifications: [], markNotificationsRead: () => {}, getUnreadNotifCount: () => 0,
-      readPosts: [], markPostAsRead: () => {}, getUnreadPostCount: () => 0
+      readPosts: [], markPostAsRead: () => {}, getUnreadPostCount: () => 0,
+      language: 'en', setLanguage: () => {}, t: (key) => key
     };
   }
   return context;

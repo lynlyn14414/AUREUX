@@ -1,5 +1,17 @@
 {
-  "users": [],
+  "users": [
+    {
+      "id": "admin_1775378929401",
+      "username": "Lyn",
+      "email": "rhollunk@gmail.com",
+      "password": "6Boysastro",
+      "avatar": "",
+      "banner": "",
+      "status": "",
+      "isAdmin": true,
+      "googleId": "112338936646318492623"
+    }
+  ],
   "drafts": [],
   "posts": [],
   "ratings": [],

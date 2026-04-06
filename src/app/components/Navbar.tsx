@@ -10,7 +10,7 @@ export function Navbar() {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout, getUnreadCount, notifications, getUnreadNotifCount, markNotificationsRead } = useApp();
+  const { user, logout, getUnreadCount, notifications, getUnreadNotifCount, markNotificationsRead, t } = useApp();
   const profileMenuRef = useRef<HTMLDivElement>(null);
   
   const unreadMessages = getUnreadCount();
@@ -27,11 +27,11 @@ export function Navbar() {
   }, []);
 
   const allNavLinks = [
-    { name: 'Home', path: '/', icon: <BookOpen size={20} /> },
-    { name: 'Library', path: '/library', icon: <Library size={20} />, protected: true },
-    { name: 'Write', path: '/write', icon: <PenTool size={20} />, protected: true },
-    { name: 'Search', path: '/search', icon: <Search size={20} /> },
-    { name: 'Community', path: '/social', icon: <Users size={20} /> },
+    { name: t('home'), path: '/', icon: <BookOpen size={20} /> },
+    { name: t('library'), path: '/library', icon: <Library size={20} />, protected: true },
+    { name: t('write'), path: '/write', icon: <PenTool size={20} />, protected: true },
+    { name: t('search'), path: '/search', icon: <Search size={20} /> },
+    { name: t('community'), path: '/social', icon: <Users size={20} /> },
   ];
 
   const navLinks = allNavLinks.filter(link => !link.protected || user);
@@ -41,7 +41,7 @@ export function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <Link to="/" className="flex items-center space-x-3">
-            <img src="/logo.jpg" alt="HECATE" className="w-10 h-10 rounded-full object-cover" />
+            <img src="/logo.jpg" alt="HECATE" className="w-10 h-10 rounded-full object-cover scale-[1.4]" />
             <span className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent">
               HECATE
             </span>
@@ -75,7 +75,7 @@ export function Navbar() {
                       ? "text-purple-400 bg-slate-800"
                       : "text-slate-400 hover:text-white hover:bg-slate-800"
                   )}
-                  title="Messages"
+                  title={t('messages')}
                 >
                   <MessageCircle size={22} />
                   {unreadMessages > 0 && (
@@ -108,7 +108,7 @@ export function Navbar() {
                         className="flex items-center gap-3 px-4 py-3 text-slate-200 hover:bg-slate-700 transition-colors"
                       >
                         <User size={18} className="text-purple-400" />
-                        <span>Profile Display</span>
+                        <span>{t('profile')}</span>
                       </Link>
                       <Link 
                         to="/settings"
@@ -116,7 +116,7 @@ export function Navbar() {
                         className="flex items-center gap-3 px-4 py-3 text-slate-200 hover:bg-slate-700 transition-colors"
                       >
                         <Settings size={18} className="text-blue-400" />
-                        <span>Settings</span>
+                        <span>{t('settings')}</span>
                       </Link>
                       <button 
                         onClick={() => { navigate('/notifications'); setProfileMenuOpen(false); }}
@@ -128,7 +128,7 @@ export function Navbar() {
                             <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-bold rounded-full w-3 h-3 flex items-center justify-center"></span>
                           )}
                         </div>
-                        <span>Notifications</span>
+                        <span>{t('notifications')}</span>
                         {unreadNotifs > 0 && (
                           <span className="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{unreadNotifs}</span>
                         )}
@@ -139,7 +139,7 @@ export function Navbar() {
                         className="w-full flex items-center gap-3 px-4 py-3 text-red-400 hover:bg-slate-700 transition-colors"
                       >
                         <LogOut size={18} />
-                        <span>Sign Out</span>
+                        <span>{t('signOut')}</span>
                       </button>
                     </div>
                   )}
@@ -150,7 +150,7 @@ export function Navbar() {
                 to="/auth"
                 className="ml-4 px-4 py-2 rounded-full bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium transition-colors"
               >
-                Sign In
+                {t('signIn')}
               </Link>
             )}
           </div>
@@ -220,7 +220,7 @@ export function Navbar() {
                       )}
                     >
                       <User size={20} />
-                      <span>Profile Display</span>
+                      <span>{t('profile')}</span>
                     </Link>
                     
                     <Link 
@@ -234,7 +234,7 @@ export function Navbar() {
                       )}
                     >
                       <Settings size={20} />
-                      <span>Settings</span>
+                      <span>{t('settings')}</span>
                     </Link>
                     
                     <Link 
@@ -255,7 +255,7 @@ export function Navbar() {
                           </span>
                         )}
                       </div>
-                      <span>Notifications</span>
+                      <span>{t('notifications')}</span>
                       {unreadNotifs > 0 && (
                         <span className="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
                           {unreadNotifs}
@@ -281,7 +281,7 @@ export function Navbar() {
                           </span>
                         )}
                       </div>
-                      <span>Messages</span>
+                      <span>{t('messages')}</span>
                     </Link>
                     
                     <div className="border-t border-slate-700 my-2"></div>
@@ -291,7 +291,7 @@ export function Navbar() {
                       className="flex items-center space-x-3 px-3 py-3 rounded-md text-base font-medium text-red-400 hover:text-red-300 w-full text-left"
                     >
                       <LogOut size={20} />
-                      <span>Sign Out</span>
+                      <span>{t('signOut')}</span>
                     </button>
                  </div>
               ) : (
@@ -301,7 +301,7 @@ export function Navbar() {
                   className="flex items-center space-x-3 px-3 py-3 rounded-md text-base font-medium text-white bg-purple-600 hover:bg-purple-700 mt-4"
                 >
                   <User size={20} />
-                  <span>Sign In / Register</span>
+                  <span>{t('signIn')} / {t('createAccount')}</span>
                 </Link>
               )}
             </div>

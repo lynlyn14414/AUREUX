@@ -4,7 +4,7 @@ import {
   BookOpen, Edit3, Eye, EyeOff, GripVertical, ChevronRight, Settings,
   Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List,
   Image, Link as LinkIcon, Quote, Minus, MoreHorizontal, X, Check, Globe,
-  ArrowUp, ArrowDown, ImagePlus, Star, Users
+  ArrowUp, ArrowDown, ImagePlus, Star, Users, ChevronDown
 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useApp, Draft, Chapter } from '../context/AppContext';
@@ -39,6 +39,7 @@ export function Write() {
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [publishAsOfficial, setPublishAsOfficial] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
+  const [showGenreDropdown, setShowGenreDropdown] = useState(false);
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const panelInputRef = useRef<HTMLInputElement>(null);
 
@@ -611,24 +612,37 @@ export function Write() {
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">Genres (select multiple)</label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {['Action', 'Romance', 'Fantasy', 'Sci-Fi', 'Horror', 'Mystery', 'Thriller', 'Comedy', 'Drama', 'Slice of Life', 'Adventure'].map(g => (
-                  <label key={g} className="flex items-center gap-2 p-2 bg-slate-900 border border-slate-700 rounded-lg cursor-pointer hover:border-purple-500 transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={genres.includes(g)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setGenres([...genres, g]);
-                        } else {
-                          setGenres(genres.filter(x => x !== g));
-                        }
-                      }}
-                      className="w-4 h-4 text-purple-600 bg-slate-800 border-slate-600 rounded focus:ring-purple-500"
-                    />
-                    <span className="text-white text-sm">{g}</span>
-                  </label>
-                ))}
+              <div className="relative">
+                <button
+                  onClick={() => setShowGenreDropdown(!showGenreDropdown)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-left text-white flex items-center justify-between hover:border-purple-500 transition-colors"
+                >
+                  <span>{genres.length > 0 ? `${genres.length} selected` : 'Select genres...'}</span>
+                  <ChevronDown size={18} className={`text-slate-400 transition-transform ${showGenreDropdown ? 'rotate-180' : ''}`} />
+                </button>
+                {showGenreDropdown && (
+                  <div className="absolute z-50 w-full mt-2 bg-slate-900 border border-slate-700 rounded-lg shadow-xl max-h-64 overflow-y-auto">
+                    <div className="p-2 grid grid-cols-2 gap-2">
+                      {['Action', 'Adventure', 'Comedy', 'Drama', 'Fantasy', 'Horror', 'Mystery', 'Romance', 'Sci-Fi', 'Slice of Life', 'Thriller', 'Historical', 'Supernatural', 'Psychological', 'Sports', 'Mecha', 'Isekai', 'Yaoi', 'Yuri', 'Shounen', 'Shoujo', 'Seinen', 'Josei', 'Mature', 'Tragedy', 'School Life', 'Martial Arts', 'Video Games', 'Wuxia', 'Xianxia', 'Magical Realism', 'Cyberpunk', 'Steampunk', 'Post-Apocalyptic', 'Dystopian', 'Gore', 'Gender Bender', 'Harem', 'Reverse Harem', 'Survival', 'Military', 'Police', 'Medical', 'Cooking', 'Music', 'Dance', 'Art', 'Philosophy', 'Political', 'Business', 'Economics', 'Law', 'Education', 'Travel', 'Nature', 'Animals', 'Pets', 'Vampires', 'Werewolves', 'Zombies', 'Demons', 'Angels', 'Gods', 'Monsters', 'Dragons', 'Magic', 'Superpowers', 'Time Travel', 'Space', 'Aliens', 'Robots', 'AI', 'Virtual Reality', 'Augmented Reality', 'Dreams', 'Reincarnation', 'Transmigration', 'System', 'Leveling', 'Cultivation', 'Alchemy', 'Astrology', 'Tarot', 'Occult', 'Paranormal', 'Ghost', 'Spirits', 'Folklore', 'Mythology', 'Legends', 'Fairy Tales', 'Fables', 'Poetry', 'Songs', 'LGBTQ+', 'BL', 'GL', 'Non-binary', 'Transgender', 'Asexual', 'Bisexual', 'Pansexual', 'Demisexual', 'Polyamory', 'BDSM', 'Kink', 'Fetish'].map(g => (
+                        <label key={g} className="flex items-center gap-2 p-2 hover:bg-slate-800 rounded cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={genres.includes(g)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setGenres([...genres, g]);
+                              } else {
+                                setGenres(genres.filter(x => x !== g));
+                              }
+                            }}
+                            className="w-4 h-4 text-purple-600 bg-slate-800 border-slate-600 rounded focus:ring-purple-500"
+                          />
+                          <span className="text-white text-sm">{g}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
               {genres.length === 0 && (
                 <p className="text-red-400 text-sm mt-2">Please select at least one genre</p>

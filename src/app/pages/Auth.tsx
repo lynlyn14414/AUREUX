@@ -19,32 +19,60 @@ export function Auth() {
     adminCode: ''
   });
 
-  const { login, register, adminLogin, registerAdmin } = useApp();
+  const { login, register, adminLogin, registerAdmin, t } = useApp();
   const navigate = useNavigate();
 
-  const handleGoogleLogin = async (email: string, name: string, googleId: string) => {
+  const handleGoogleLogin = async (email: string, name: string, googleId: string, isAdmin: boolean = false) => {
     // Create username from email (before @)
     const username = email.split('@')[0];
     
-    // Try to login first
-    const loginSuccess = await login({ username, password: googleId });
+    // Try to find existing user
+    const users = await fetch('/api/users').then(res => res.json());
+    const existingUser = users?.find((u: any) => 
+      u.email === email && u.isAdmin === isAdmin
+    );
     
-    if (loginSuccess) {
-      toast.success('Welcome back!');
-      navigate('/');
-    } else {
-      // User doesn't exist, register them
-      const registerSuccess = await register({ 
-        username, 
-        email,
-        password: googleId 
-      });
-      
-      if (registerSuccess) {
-        toast.success('Account created with Google!');
-        navigate('/');
+    if (existingUser) {
+      // User exists - check if Google is linked
+      if (existingUser.googleId && existingUser.googleId === googleId) {
+        // Google is linked - log them in
+        const loginSuccess = await login({ 
+          username: existingUser.username, 
+          password: googleId,
+          isAdmin: isAdmin
+        });
+        
+        if (loginSuccess) {
+          toast.success(isAdmin ? 'Admin logged in with Google!' : 'Welcome back!');
+          navigate('/');
+        } else {
+          toast.error('Failed to login');
+        }
+      } else if (!existingUser.googleId) {
+        // User exists but Google not linked - tell them to link first
+        toast.error('Please link your Google account in Settings first');
       } else {
-        toast.error('Failed to create account');
+        // Google ID doesn't match
+        toast.error('Google account mismatch');
+      }
+    } else {
+      // User doesn't exist
+      if (isAdmin) {
+        toast.error('Admin account not found. Please register as admin first.');
+      } else {
+        // Create new normal user
+        const registerSuccess = await register({ 
+          username, 
+          email,
+          password: googleId
+        });
+        
+        if (registerSuccess) {
+          toast.success(t('accountCreated'));
+          navigate('/');
+        } else {
+          toast.error(t('error'));
+        }
       }
     }
   };
@@ -53,44 +81,48 @@ export function Auth() {
     e.preventDefault();
 
     if (!formData.username.trim()) {
-      toast.error('Please enter a username');
+      toast.error(t('usernameRequired'));
       return;
     }
 
     if (!isLogin && !formData.email.trim()) {
-      toast.error('Please enter an email');
+      toast.error(t('emailRequired'));
       return;
     }
 
     if (!isLogin && !formData.email.includes('@')) {
-      toast.error('Please enter a valid email');
+      toast.error(t('invalidEmail'));
       return;
     }
 
     if (!formData.password) {
-      toast.error('Please enter a password');
+      toast.error(t('passwordRequired'));
       return;
     }
 
     if (formData.password.length < 6) {
-      toast.error('Password must be at least 6 characters');
+      toast.error(t('passwordLength'));
       return;
     }
 
     if (!isLogin && formData.password !== formData.confirmPassword) {
-      toast.error('Passwords do not match');
+      toast.error(t('passwordsMatch'));
       return;
     }
 
     const userData = { 
       username: formData.username.trim(), 
-      email: formData.email.trim(),
-      password: formData.password 
+      email: isLogin ? undefined : formData.email.trim(),
+      password: formData.password,
+      isAdmin: isAdminMode  // Pass isAdmin flag
     };
+
+    console.log('Login attempt:', { username: userData.username, isLogin, isAdminMode });
 
     if (isAdminMode) {
       if (isLogin) {
         const success = await adminLogin(userData);
+        console.log('Admin login result:', success);
         if (success) {
           toast.success('Welcome back, Admin!');
           navigate('/');
@@ -147,10 +179,10 @@ export function Auth() {
             {isAdminMode ? <ShieldCheck size={32} className="text-white" /> : <BookOpen size={32} className="text-white" />}
           </div>
           <h1 className="text-3xl font-bold text-white mb-2">
-            {isAdminMode ? 'Admin Portal' : 'Welcome to HECATE'}
+            {isAdminMode ? t('adminPortal') : t('welcome')}
           </h1>
           <p className="text-slate-400">
-            {isLogin ? 'Sign in to continue' : 'Create your account'}
+            {isLogin ? t('signInToContinue') : t('createAccountToContinue')}
           </p>
         </div>
 
@@ -181,7 +213,7 @@ export function Auth() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">
-                Username
+                {t('username')}
               </label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={20} />
@@ -190,7 +222,7 @@ export function Auth() {
                   value={formData.username}
                   onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                   className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-10 pr-4 py-3 text-white placeholder-slate-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
-                  placeholder="Enter your username"
+                  placeholder={t('enterUsername')}
                 />
               </div>
             </div>
@@ -198,7 +230,7 @@ export function Auth() {
             {!isLogin && (
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Email
+                  {t('email')}
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={20} />
@@ -207,7 +239,7 @@ export function Auth() {
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-10 pr-4 py-3 text-white placeholder-slate-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
-                    placeholder="Enter your email"
+                    placeholder={t('enterEmail')}
                   />
                 </div>
               </div>
@@ -215,7 +247,7 @@ export function Auth() {
 
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">
-                Password
+                {t('password')}
               </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={20} />
@@ -224,7 +256,7 @@ export function Auth() {
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-10 pr-12 py-3 text-white placeholder-slate-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
-                  placeholder="Enter your password"
+                  placeholder={t('enterPassword')}
                 />
                 <button
                   type="button"
@@ -283,7 +315,36 @@ export function Auth() {
               {isLogin ? 'Sign In' : 'Create Account'}
             </button>
 
-            {!isAdminMode && (
+            {isAdminMode && isLogin && (
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!formData.username) {
+                    toast.error('Please enter your username first');
+                    return;
+                  }
+                  // Reset password to a default value
+                  const users = await fetch('/api/users').then(res => res.json());
+                  const user = users?.find((u: any) => u.username.toLowerCase() === formData.username.toLowerCase() && u.isAdmin);
+                  if (user) {
+                    // Update user with new password
+                    await fetch(`/api/users/${user.id}`, {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ password: 'admin123' })
+                    });
+                    toast.success('Password reset to: admin123');
+                  } else {
+                    toast.error('Admin user not found');
+                  }
+                }}
+                className="w-full py-2 text-sm text-yellow-400 hover:text-yellow-300 transition-colors"
+              >
+                Forgot Password? (Reset to admin123)
+              </button>
+            )}
+
+            {!isAdminMode ? (
               <>
                 <div className="relative my-4">
                   <div className="absolute inset-0 flex items-center">
@@ -303,8 +364,8 @@ export function Auth() {
                         const name = decoded.name;
                         const googleId = decoded.sub;
                         
-                        // Create or login user with Google data
-                        handleGoogleLogin(email, name, googleId);
+                        // Create or login user with Google data (normal user)
+                        handleGoogleLogin(email, name, googleId, false);
                       }
                     }}
                     onError={() => {
@@ -314,7 +375,38 @@ export function Auth() {
                   />
                 </div>
               </>
-            )}
+            ) : isLogin ? (
+              <>
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-slate-700"></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-2 bg-slate-800 text-slate-400">Or continue with Google (Admin Only)</span>
+                  </div>
+                </div>
+
+                <div className="flex justify-center">
+                  <GoogleLogin
+                    onSuccess={(credentialResponse) => {
+                      if (credentialResponse.credential) {
+                        const decoded: any = jwtDecode(credentialResponse.credential);
+                        const email = decoded.email;
+                        const name = decoded.name;
+                        const googleId = decoded.sub;
+                        
+                        // Handle admin Google login
+                        handleGoogleLogin(email, name, googleId, true);
+                      }
+                    }}
+                    onError={() => {
+                      toast.error('Google Sign In failed');
+                    }}
+                    useOneTap
+                  />
+                </div>
+              </>
+            ) : null}
           </form>
 
           <div className="mt-6 pt-6 border-t border-slate-700">

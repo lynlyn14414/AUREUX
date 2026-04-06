@@ -3,7 +3,7 @@ import { Search as SearchIcon, Filter, X, Star, ChevronDown } from 'lucide-react
 import { StoryCard } from '../components/StoryCard';
 import { useApp } from '../context/AppContext';
 
-const GENRES = ["Action", "Romance", "Sci-Fi", "Fantasy", "Adventure", "Comedy", "Horror", "Drama", "Mystery", "Thriller", "Slice of Life"];
+const GENRES = ["Action", "Adventure", "Comedy", "Drama", "Fantasy", "Horror", "Mystery", "Romance", "Sci-Fi", "Slice of Life", "Thriller", "Historical", "Supernatural", "Psychological", "Sports", "Mecha", "Isekai", "Yaoi", "Yuri", "Shounen", "Shoujo", "Seinen", "Josei", "Mature", "Tragedy", "School Life", "Martial Arts", "Video Games", "Wuxia", "Xianxia", "Magical Realism", "Cyberpunk", "Steampunk", "Post-Apocalyptic", "Dystopian", "Gore", "Gender Bender", "Harem", "Reverse Harem", "Survival", "Military", "Police", "Medical", "Cooking", "Music", "Dance", "Art", "Philosophy", "Political", "Business", "Economics", "Law", "Education", "Travel", "Nature", "Animals", "Pets", "Vampires", "Werewolves", "Zombies", "Demons", "Angels", "Gods", "Monsters", "Dragons", "Magic", "Superpowers", "Time Travel", "Space", "Aliens", "Robots", "AI", "Virtual Reality", "Augmented Reality", "Dreams", "Reincarnation", "Transmigration", "System", "Leveling", "Cultivation", "Alchemy", "Astrology", "Tarot", "Occult", "Paranormal", "Ghost", "Spirits", "Folklore", "Mythology", "Legends", "Fairy Tales", "Fables", "Poetry", "Songs", "LGBTQ+", "BL", "GL", "Non-binary", "Transgender", "Asexual", "Bisexual", "Pansexual", "Demisexual", "Polyamory", "BDSM", "Kink", "Fetish"];
 
 export function Search() {
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
